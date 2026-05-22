@@ -1,0 +1,26 @@
+libsqlite3-dev
+libpq-dev
+libmysqlclient-dev
+libbrotli-dev 
+libhiredis-dev 
+libyaml-cpp-dev
+libprotobuf-dev 
+protobuf-compiler
+// converting to int8
+uv run --with "ctranslate2" --with "transformers" --with "torch" --with "sentencepiece" -- \
+  python3 -c "
+import ctranslate2
+from transformers import MarianTokenizer
+
+model_path = '/home/rapidedev/PROJECTS/CPP/TRANSLATION/models/clean-en-fr'
+output_path = '/home/rapidedev/PROJECTS/CPP/TRANSLATION/models/clean-en-fr-ct2-int8'
+
+# Load tokenizer manually since AutoTokenizer doesn't recognize MarianConfig
+tokenizer = MarianTokenizer.from_pretrained(model_path)
+
+# Convert with int8 quantization
+converter = ctranslate2.converters.TransformersConverter(model_path)
+converter.convert(output_path, force=True, quantization='int8')
+print(f'Converted to {output_path}')
+"
+

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <!-- CTranslate2 converted model directory -->
+    <model_path>./models/clean-en-fr-ct2-f32</model_path>
+
+    <!-- source.spm and target.spm -->
+    <spm_dir>./models/clean-en-fr</spm_dir>
+
+    <!-- Number of translator replicas in the CT2 pool : physical_cores / intra_op_threads -->
+    <num_workers>4</num_workers>
+
+    <!-- Threads each replica uses internally for GEMM parallelism.
+         num_workers * intra_op_threads should equal physical core count. -->
+    <intra_op_threads>2</intra_op_threads>
+
+    <!-- Flush the dynamic batch when it reaches this many sentences. -->
+    <max_batch_size>64</max_batch_size>
+
+    <!-- Max µs to wait before flushing a partial batch.
+         Lower = less latency, smaller batches.
+         Higher = more throughput, slightly higher latency. -->
+    <batch_timeout_us>5000</batch_timeout_us>
+
+    <!-- Beam size: 1 = greedy (fastest, ~same quality for translation). -->
+    <beam_size>1</beam_size>
+
+    <max_decoding_length>128</max_decoding_length>
+</config>

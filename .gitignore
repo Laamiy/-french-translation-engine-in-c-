@@ -1,0 +1,13 @@
+*.o
+*.cmake 
+*/**.cmake 
+*/**.so 
+build
+.vscode 
+models
+*.bak
+backup 
+Thirdparty/CTranslate2
+Thirdparty/tokenizers-cpp
+Thirdparty/pugixml
+uploads
