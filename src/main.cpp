@@ -15,13 +15,13 @@ static translation::BatchingTranslator::Config load_config(const std::string& pa
 {
     translation::BatchingTranslator::Config cfg;
     // Defaults.
-    cfg.model_path          = "./models/clean-en-fr-ct2-f32";
-    cfg.spm_dir             = "./models/clean-en-fr";
+    cfg.model_path          = "./models/onnx-en-fr-q";
+    cfg.spm_dir             = "./models/onnx-en-fr-q";
     cfg.num_workers         = std::max(1u, std::thread::hardware_concurrency() / 2);
     cfg.intra_op_threads    = 2;
     cfg.max_batch_size      = 64;
     cfg.batch_timeout_us    = 5000;
-    cfg.beam_size           = 1;
+    // cfg.beam_size           = 1;
     cfg.max_decoding_length = 128;
 
     pugi::xml_document doc;
@@ -36,9 +36,23 @@ static translation::BatchingTranslator::Config load_config(const std::string& pa
     if (!root) 
      return cfg;
 
-    auto str  = [&](const char* n, std::string& v)  { if (auto c = root.child(n)) v = c.child_value(); };
-    auto u64  = [&](const char* n, size_t& v)        { if (auto c = root.child(n)) v = std::stoull(c.child_value()); };
-    auto u32  = [&](const char* n, uint32_t& v)      { if (auto c = root.child(n)) v = std::stoul(c.child_value()); };
+    auto str  = [&](const char* n, std::string& v)  
+                 { 
+                    if (auto c = root.child(n)) 
+                        v = c.child_value(); 
+                 };
+
+    auto u64  = [&](const char* n, size_t& v)        
+                    { 
+                        if (auto c = root.child(n)) 
+                            v = std::stoull(c.child_value()); 
+                    };
+                    
+    auto u32  = [&](const char* n, uint32_t& v)      
+                    { 
+                        if (auto c = root.child(n))     
+                            v = std::stoul(c.child_value()); 
+                    };
 
     str("model_path",          cfg.model_path);
     str("spm_dir",             cfg.spm_dir);
@@ -46,7 +60,7 @@ static translation::BatchingTranslator::Config load_config(const std::string& pa
     u64("intra_op_threads",    cfg.intra_op_threads);
     u64("max_batch_size",      cfg.max_batch_size);
     u32("batch_timeout_us",    cfg.batch_timeout_us);
-    u64("beam_size",           cfg.beam_size);
+    // u64("beam_size",           cfg.beam_size);
     u64("max_decoding_length", cfg.max_decoding_length);
 
     return cfg;
@@ -79,18 +93,17 @@ int main(int argc, char* argv[])
               << "  intra_op_threads  : " << cfg.intra_op_threads    << "\n"
               << "  max_batch_size    : " << cfg.max_batch_size      << "\n"
               << "  batch_timeout_us  : " << cfg.batch_timeout_us    << " µs\n"
-              << "  beam_size         : " << cfg.beam_size           << "\n"
+            //   << "  beam_size         : " << cfg.beam_size           << "\n"
               << "  max_decoding_len  : " << cfg.max_decoding_length << "\n";
 
-    // Construct before Drogon starts — this loads the model and warms CT2.
+    // Construct before Drogon starts 
     auto translator = std::make_shared<translation::BatchingTranslator>(std::move(cfg));
 
-    // Drogon: one IO thread per hardware core is overkill for a proxy-style
-    // server; 4–8 is the sweet spot.  All the real work is in CT2's pool.
     const int drogon_threads = static_cast<int>( std::min(std::thread::hardware_concurrency(), 8u));
     drogon::app().setThreadNum(drogon_threads);
     drogon::app().addListener("0.0.0.0", 8888);
-    drogon::app().disableSigtermHandling(); // OS terminate 
+    // OS terminate
+    drogon::app().disableSigtermHandling();  
 
     // ── POST /translate 
     // Accepts:

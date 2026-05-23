@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(MYSQL_LIBRARIES /usr/lib/x86_64-linux-gnu/libmysqlclient.so)
 set(MYSQL_INCLUDE_DIRS /usr/include/mysql)
 
-# ── Release build flags ───────────────────────────────────────────────────────
+# ── Release build flags 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_compile_options(-O3 -march=native -funroll-loops -ffast-math)
 endif()
@@ -16,7 +16,7 @@ endif()
 set(SRC_DIR       ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Thirdparty)
 
-# ── Dependencies ─────────────────────────────────────────────────────────────
+# ── Dependencies 
 find_package(Threads   REQUIRED)
 find_package(Drogon    REQUIRED)
 find_package(PkgConfig REQUIRED)
@@ -28,7 +28,7 @@ find_path(ONNXRUNTIME_INCLUDE onnxruntime_cxx_api.h PATHS /usr/local/include REQ
 # SentencePiece via pkg-config (system install).
 pkg_check_modules(SentencePiece REQUIRED sentencepiece)
 
-# ── 3rd-party subdirs ────────────────────────────────────────────────────────
+# ── 3rd-party subdirs 
 add_subdirectory(${THIRDPARTY_DIR}/pugixml EXCLUDE_FROM_ALL)
 
 # nlohmann/json — header-only, just need the include path.
@@ -37,7 +37,7 @@ if(NOT EXISTS ${JSON_INCLUDE_DIR}/nlohmann/json.hpp)
     message(FATAL_ERROR "nlohmann/json not found at ${JSON_INCLUDE_DIR}")
 endif()
 
-# ── Target ───────────────────────────────────────────────────────────────────
+# ── Target 
 add_executable(translation_server
     ${SRC_DIR}/main.cpp
     ${SRC_DIR}/translator.cpp
