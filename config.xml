@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
-    <!-- CTranslate2 converted model directory -->
     <model_path>./models/onnx-en-fr-q</model_path>
 
     <!-- source.spm and target.spm -->
     <spm_dir>./models/onnx-en-fr-q</spm_dir>
 
-    <!-- Number of translator replicas in the CT2 pool : physical_cores / intra_op_threads -->
+    <!-- Number of translator replicas in the  pool : physical_cores / intra_op_threads -->
     <num_workers>6</num_workers>
 
     <!-- Threads each replica uses internally for GEMM parallelism.
@@ -24,5 +23,5 @@
     <!-- Beam size: 1 = greedy (fastest, ~same quality for translation). -->
     <beam_size>1</beam_size>
 
-    <max_decoding_length>128</max_decoding_length>
+    <max_decoding_length>64</max_decoding_length>
 </config>

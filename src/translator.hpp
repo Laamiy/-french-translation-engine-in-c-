@@ -44,6 +44,7 @@
 
         [[nodiscard]] std::future<std::vector<std::string>>
         translate_async(std::vector<std::string> texts);
+        size_t num_workers() const { return cfg_.num_workers; }
 
     private:
         struct WorkItem {
