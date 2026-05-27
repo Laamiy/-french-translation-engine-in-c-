@@ -14,8 +14,7 @@ namespace fs = std::filesystem;
 // ── Construction ─────────────────────────────────────────────────────────────
 
 BatchingTranslator::BatchingTranslator(Config cfg)
-    : cfg_(std::move(cfg))
-    , ort_env_(ORT_LOGGING_LEVEL_WARNING, "translation_server")
+    : cfg_(std::move(cfg)) , ort_env_(ORT_LOGGING_LEVEL_WARNING, "translation_server")
 {
     tokenizer_ = std::make_unique<Tokenizer>(cfg_.spm_dir);
 
@@ -35,6 +34,7 @@ BatchingTranslator::BatchingTranslator(Config cfg)
 
         if (!fs::exists(path))
             throw std::runtime_error("ONNX model not found: " + path);
+
         std::cout << "  Loading " << path << "\n";
         return std::make_unique<Ort::Session>(ort_env_, path.c_str(), session_opts_);
     };
@@ -49,7 +49,9 @@ BatchingTranslator::BatchingTranslator(Config cfg)
     // so N sentences can be running through encoder+decoder concurrently.
     // Each thread calls ORT with intra_op_threads, so total CPU =
     // num_workers * intra_op_threads. Set product == physical core count.
+
     dispatchers_.reserve(cfg_.num_workers);
+
     for (size_t i = 0; i < cfg_.num_workers; ++i)
         dispatchers_.emplace_back(&BatchingTranslator::dispatcher_loop, this);
 }
@@ -66,7 +68,8 @@ BatchingTranslator::~BatchingTranslator()
 // ── Public API ────────────────────────────────────────────────────────────────
 
 std::future<std::vector<std::string>>
-BatchingTranslator::translate_async(std::vector<std::string> texts) {
+BatchingTranslator::translate_async(std::vector<std::string> texts) 
+{
     WorkItem item;
     item.texts = std::move(texts);
     auto fut   = item.promise.get_future();
@@ -94,6 +97,7 @@ void BatchingTranslator::dispatcher_loop()
                 {
                     return !queue_.empty() || stop_.load(std::memory_order_acquire);
                 });
+                
             if (stop_.load(std::memory_order_acquire) && queue_.empty())
                 return;
             item = std::move(queue_.front());

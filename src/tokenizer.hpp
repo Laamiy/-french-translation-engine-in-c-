@@ -4,6 +4,9 @@
 #include <vector>
 #include <memory>
 
+#define EOF_TOKEN 0
+#define PAD_TOKEN 59513
+
 namespace translation 
 {
     // Pimpl hides sentencepiece headers from all consumers.
@@ -15,7 +18,7 @@ namespace translation
             ~Tokenizer();
 
             Tokenizer(const Tokenizer&)            = delete;
-            Tokenizer& operator=(const Tokenizer&) = delete;
+            Tokenizer& operator=(const Tokenizer&)   = delete;
 
             // Thread-safe:
             [[nodiscard]] std::vector<std::vector<std::string>>

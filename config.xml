@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
 <config>
     <model_path>./models/onnx-en-fr-q</model_path>
 
     <!-- source.spm and target.spm -->
     <spm_dir>./models/onnx-en-fr-q</spm_dir>
 
-    <!-- Number of translator replicas in the  pool : physical_cores / intra_op_threads -->
+    <!-- num ranslator replicas in the  pool : physical_cores / intra_op_threads -->
     <num_workers>6</num_workers>
 
     <!-- Threads each replica uses internally for GEMM parallelism.
