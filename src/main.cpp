@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
     drogon::app().disableSigtermHandling();
 
     // POST /translate 
-    drogon::app().registerHandler( "/translate", [translator, pool] ( const drogon::HttpRequestPtr& req, HttpResponsePtr&& callback)
+    drogon::app().registerHandler( "/summarize", [translator, pool] ( const drogon::HttpRequestPtr& req, HttpResponsePtr&& callback)
         {
             json body;
             try 
@@ -136,8 +136,8 @@ int main(int argc, char* argv[])
                     for (size_t i = 0; i < texts.size(); ++i) 
                     {
                         out["results"].push_back({
-                            {"source",      texts[i]},
-                            {"translation", i < translations.size() ? translations[i] : ""}
+                            {"display_title_fr", i < translations.size() ? translations[i] : ""},
+                            {"subjectTrans",      texts[i]},
                         });
                     }
                     cb(utils::json_response(out));

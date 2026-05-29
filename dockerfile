@@ -86,6 +86,6 @@ COPY --chown=appuser:appuser ./models/onnx-en-fr-q /app/models/onnx-en-fr-q
 # application executable
 COPY --from=builder --chown=appuser:appuser /app/build/translation_server /app/translation_server
 
-EXPOSE 8000
+EXPOSE 8888
 
 CMD ["/app/translation_server", "/app/config.xml"]

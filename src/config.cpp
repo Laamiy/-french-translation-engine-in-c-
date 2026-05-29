@@ -5,13 +5,15 @@
 translation::BatchingTranslator::Config utils::load_config(const std::string& path)
 {
     translation::BatchingTranslator::Config cfg;
+
+
     cfg.model_path          = "./models/onnx-en-fr-q";
-    cfg.spm_dir            = "./models/onnx-en-fr-q";
-    cfg.num_workers        = std::max(1u, std::thread::hardware_concurrency() / 2);
-    cfg.intra_op_threads     = 2;
+    cfg.spm_dir             = "./models/onnx-en-fr-q";
+    cfg.num_workers         = std::max(1u, std::thread::hardware_concurrency() / 2);
+    cfg.intra_op_threads    = 1;
     cfg.max_batch_size      = 64;
-    cfg.batch_timeout_us     = 5000;
-    cfg.max_decoding_length  = 64;
+    cfg.batch_timeout_us    = 5000;
+    cfg.max_decoding_length = 64;
 
     pugi::xml_document doc;
     pugi::xml_parse_result res = doc.load_file(path.c_str());
@@ -37,6 +39,9 @@ translation::BatchingTranslator::Config utils::load_config(const std::string& pa
     u64("max_batch_size",      cfg.max_batch_size);
     u32("batch_timeout_us",    cfg.batch_timeout_us);
     u64("max_decoding_length", cfg.max_decoding_length);
+
+    char* num_workers = std::getenv("NWORKERS");
+    cfg.num_workers   = num_workers ? std::stoi(num_workers) : cfg.num_workers ;  
 
     return cfg;
 }

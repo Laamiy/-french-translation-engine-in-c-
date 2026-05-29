@@ -1,125 +1,120 @@
-    #pragma once
-    #include "tokenizer.hpp"
-    #include <onnxruntime_cxx_api.h>
-    #include <atomic>
-    #include <condition_variable>
-    #include <deque>
-    #include <future>
-    #include <mutex>
-    #include <string>
-    #include <thread>
-    #include <vector>
+#pragma once
 
-    namespace translation 
-    {
+#include "tokenizer.hpp"
+#include <onnxruntime_cxx_api.h>
 
-        // Number of transformer layers — matches your model's present.N.* outputs.
-        static constexpr int kNumLayers = 6;
-        static constexpr int kNumHeads  = 8;
-        static constexpr int kHeadDim   = 64;
+#include <atomic>
+#include <array>
+#include <condition_variable>
+#include <deque>
+#include <future>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
-        class BatchingTranslator 
-        {
-            public:
-                struct Config 
-                {
-                    std::string model_path;                   // encoder/decoder onnx files
-                    std::string spm_dir;                    // source.spm / target.spm
-                    size_t      num_workers         = 4;
-                    size_t      intra_op_threads      = 2;
-                    size_t      max_batch_size      = 32;
-                    uint32_t    batch_timeout_us    = 5000;
-                    size_t      max_decoding_length = 128;
+namespace translation {
 
-                    // Token IDs from generation_config.json
-                    int64_t     decoder_start_token   = 59513;
-                    int64_t     eos_token_id        = 0;
-                    int64_t     pad_token_id        = 59513;
-                };
+static constexpr int kNumLayers = 6;
+static constexpr int kNumHeads  = 8;
+static constexpr int kHeadDim   = 64;
 
-                explicit BatchingTranslator(Config cfg);
-                ~BatchingTranslator();
+class BatchingTranslator {
+public:
+    struct Config {
+        std::string model_path;
+        std::string spm_dir;
+        size_t      num_workers         = 4;
+        size_t      intra_op_threads    = 2;
+        size_t      max_batch_size      = 32;
+        uint32_t    batch_timeout_us    = 5000;
+        size_t      max_decoding_length = 128;
+        int64_t     decoder_start_token = 59513;
+        int64_t     eos_token_id        = 0;
+        int64_t     pad_token_id        = 59513;
+    };
 
-                BatchingTranslator(const BatchingTranslator&)            = delete;
-                BatchingTranslator& operator=(const BatchingTranslator&) = delete;
+    explicit BatchingTranslator(Config cfg);
+    ~BatchingTranslator();
 
-                [[nodiscard]] std::future<std::vector<std::string>>
-                translate_async(std::vector<std::string> texts);
-                size_t num_workers() const { return cfg_.num_workers; }
+    BatchingTranslator(const BatchingTranslator&)            = delete;
+    BatchingTranslator& operator=(const BatchingTranslator&) = delete;
 
-            private:
-                struct WorkItem 
-                {
-                    std::vector<std::string>           texts;
-                    std::promise<std::vector<std::string>> promise;
-                };
+    [[nodiscard]] std::future<std::vector<std::string>>
+    translate_async(std::vector<std::string> texts);
 
-                // Per-sentence KV cache state, carried across decoder steps.
-                struct KVCache 
-                {
-                    // encoder KV: fixed after first decoder step — shape [1, heads, enc_len, head_dim]
-                    // decoder KV: grows each step — shape [1, heads, step, head_dim]
-                    // Stored flat: [layer][key|value]65
-                    std::vector<std::vector<float>> enc_key;   // [kNumLayers]
-                    std::vector<std::vector<float>> enc_val;
-                    std::vector<std::vector<float>> dec_key;
-                    std::vector<std::vector<float>> dec_val;
+    size_t num_workers() const { return cfg_.num_workers; }
 
-                    std::vector<int64_t> enc_kv_shape; // [1, heads, enc_len, head_dim]
-                    std::vector<int64_t> dec_kv_shape; // updated each step
+private:
+    struct WorkItem {
+        std::vector<std::string>               texts;
+        std::promise<std::vector<std::string>> promise;
+    };
 
-                    bool encoder_kv_initialized = false;
-                };
+    // Per-thread KV cache — one instance lives on each dispatcher thread's
+    // stack for the lifetime of the thread. Buffers are reused across
+    // requests via assign(), eliminating per-request heap allocation.
+    struct KVCache {
+        std::vector<std::vector<float>> enc_key;  // [kNumLayers]
+        std::vector<std::vector<float>> enc_val;
+        std::vector<std::vector<float>> dec_key;
+        std::vector<std::vector<float>> dec_val;
+        std::vector<int64_t>            enc_kv_shape;
+        std::vector<int64_t>            dec_kv_shape;
+        bool encoder_kv_initialized = false;
+    };
 
-                void        dispatcher_loop();
-                void        run_batch(std::vector<WorkItem> batch);
-                std::string translate_one(const std::string& text);
+    // Core inference path — cache passed by ref from dispatcher thread.
+    std::string translate_one(const std::string& text, KVCache& cache);
 
-                // Runs encoder, returns hidden states + attention mask (both needed by decoder).
-                std::vector<float> run_encoder(
-                    const std::vector<int64_t>& input_ids,
-                    std::vector<int64_t>&       out_attention_mask,
-                    std::vector<int64_t>&       out_enc_shape
-                );
+    std::vector<float> run_encoder(
+        const std::vector<int64_t>& input_ids,
+        std::vector<int64_t>&       out_mask,
+        std::vector<int64_t>&       out_enc_shape
+    );
 
-                // First decoder step — no past KV supplied; produces logits + initialises cache.
-                int64_t decoder_first_step(
-                    int64_t                    start_token,
-                    const std::vector<float>&  encoder_hidden,
-                    const std::vector<int64_t>&enc_shape,
-                    const std::vector<int64_t>&enc_mask,
-                    KVCache&                   cache
-                );
+    int64_t decoder_first_step(
+        int64_t                     start_token,
+        const std::vector<float>&   enc_hidden,
+        const std::vector<int64_t>& enc_shape,
+        const std::vector<int64_t>& enc_mask,
+        KVCache&                    cache
+    );
 
-                // Subsequent decoder steps — uses decoder_with_past session.
-                int64_t decoder_step_with_past(
-                    int64_t                    last_token,
-                    const std::vector<float>&  encoder_hidden,
-                    const std::vector<int64_t>&enc_shape,
-                    const std::vector<int64_t>&enc_mask,
-                    KVCache&                   cache
-                );
+    // Simplified signature — enc_hidden/enc_shape not needed after first step.
+    int64_t decoder_step_with_past(
+        int64_t                     last_token,
+        const std::vector<int64_t>& enc_mask,
+        KVCache&                    cache
+    );
 
-                Config cfg_;
+    void dispatcher_loop();
+    void run_batch(std::vector<WorkItem> batch);
 
-                std::unique_ptr<Tokenizer> tokenizer_;
+    Config                     cfg_;
+    std::unique_ptr<Tokenizer> tokenizer_;
 
-                // One shared OrtEnv — cheap, thread-safe.
-                Ort::Env            ort_env_;
-                Ort::SessionOptions session_opts_;
+    Ort::Env            ort_env_;
+    Ort::SessionOptions session_opts_;
+    Ort::MemoryInfo     mem_info_;
 
-                std::unique_ptr<Ort::Session> enc_session_;
-                std::unique_ptr<Ort::Session> dec_session_;       // decoder_model.onnx (no past)
-                std::unique_ptr<Ort::Session> dec_wp_session_;    // decoder_with_past_model.onnx
+    std::unique_ptr<Ort::Session> enc_session_;
+    std::unique_ptr<Ort::Session> dec_session_;
+    std::unique_ptr<Ort::Session> dec_wp_session_;
 
-                // Batching queue
-                std::mutex              queue_mtx_;
-                std::condition_variable queue_cv_;
-                std::deque<WorkItem>    queue_;
-                std::atomic<bool>       stop_{false};
+    // Pre-built I/O name arrays — constructed once, reused every decode step.
+    std::vector<std::string>  dec_first_out_strs_;
+    std::vector<const char*>  dec_first_out_names_;
+    std::vector<std::string>  dec_wp_in_strs_;
+    std::vector<const char*>  dec_wp_in_names_;
+    std::vector<std::string>  dec_wp_out_strs_;
+    std::vector<const char*>  dec_wp_out_names_;
 
-                // N dispatcher threads for parallel sentence inference.
-                std::vector<std::thread> dispatchers_;
-            };
+    std::mutex               queue_mtx_;
+    std::condition_variable  queue_cv_;
+    std::deque<WorkItem>     queue_;
+    std::atomic<bool>        stop_{false};
+    std::vector<std::thread> dispatchers_;
+};
 
-    } // namespace translation
+} // namespace translation

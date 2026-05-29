@@ -7,11 +7,11 @@
     <spm_dir>./models/onnx-en-fr-q</spm_dir>
 
     <!-- num ranslator replicas in the  pool : physical_cores / intra_op_threads -->
-    <num_workers>6</num_workers>
+    <num_workers>4</num_workers>
 
     <!-- Threads each replica uses internally for GEMM parallelism.
          num_workers * intra_op_threads should equal physical core count. -->
-    <intra_op_threads>2</intra_op_threads>
+    <intra_op_threads>1</intra_op_threads>
 
     <!-- Flush the dynamic batch when it reaches this many sentences. -->
     <max_batch_size>64</max_batch_size>
